@@ -10,7 +10,7 @@ const {
   editSubmission,
   deleteSubmission,
   getSubmissionsData,
-  retrieveLastSubmittedCode
+  analyzeSubmission
 } = require('../controllers/submissionController');
 
 // Protected routes (require login)
@@ -19,7 +19,7 @@ router.get('/user/:userId', protect, getAllUserSubmissions); // Authorization ha
 router.get('/stats', protect, restrictTo('admin'), getSubmissionsData);
 router.get('/:id', protect, getSingleSubmission); // Authorization handled in controller
 router.post('/', protect, createSubmission);
-router.get('/problem/:problemId/last-code', protect, retrieveLastSubmittedCode);
+router.get('/:id/analyze', protect, analyzeSubmission);
 
 // Admin routes
 router.get('/', protect, restrictTo('admin'), getAllSubmissions);

@@ -71,32 +71,10 @@ const ProblemDetail = () => {
         return;
       }
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          // If not logged in, show default stub
-          setLastSubmission(null);
-          setCode(defaultStubs[language] || "");
-          return;
-        }
-
-        const response = await fetch(`${BASE_URL}/submissions/problem/${problem._id}/last-code`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data) {
-            setLastSubmission(data.data);
-            setCode(data.data.code);
-            setLanguage(data.data.language);
-          } else {
-            setLastSubmission(null);
-            setCode(defaultStubs[language] || "");
-          }
-        } else {
-          setLastSubmission(null);
-          setCode(defaultStubs[language] || "");
-        }
+        // Always use the default code stub for now
+        // The last submission feature has been temporarily disabled
+        setLastSubmission(null);
+        setCode(defaultStubs[language] || "");
       } catch (error) {
         setLastSubmission(null);
         setCode(defaultStubs[language] || "");

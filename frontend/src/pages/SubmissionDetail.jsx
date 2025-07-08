@@ -7,6 +7,9 @@ import Button from "../components/ui/Button"
 import Badge from "../components/ui/Badge"
 import Navbar from "../components/Navbar"
 import { useAuth } from "../context/AuthContext"
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Sparkles, BrainCircuit } from 'lucide-react';
 
 const BASE_URL = import.meta.env.VITE_API_URL || ""
 
@@ -15,6 +18,9 @@ const SubmissionDetail = () => {
   const [submission, setSubmission] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [analysis, setAnalysis] = useState('')
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false)
+  const [analysisError, setAnalysisError] = useState('')
   const { currentUser } = useAuth()
 
   useEffect(() => {
@@ -46,6 +52,111 @@ const SubmissionDetail = () => {
     fetchSubmission()
   }, [currentUser, submissionId])
 
+  // const handleAnalyze = async () => {
+  //   setLoadingAnalysis(true);
+  //   setAnalysis('');
+  //   setAnalysisError('');
+  //   try {
+  //     console.log('Starting AI analysis for submission:', submissionId);
+  //     const token = localStorage.getItem('token');
+  //     if (!token) {
+  //       throw new Error('Authentication required. Please log in again.');
+  //     }
+
+  //     const response = await fetch(`${BASE_URL}/submissions/${submissionId}/analyze`, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (!response.ok) {
+  //       console.error('Error response from server:', {
+  //         status: response.status,
+  //         statusText: response.statusText,
+  //         data
+  //       });
+
+  //       let errorMessage = 'Failed to get AI analysis';
+  //       if (data?.error) {
+  //         errorMessage += `: ${data.error}`;
+  //       } else if (data?.message) {
+  //         errorMessage += `: ${data.message}`;
+  //       } else {
+  //         errorMessage += ` (HTTP ${response.status})`;
+  //       }
+
+  //       throw new Error(errorMessage);
+  //     }
+
+  //     if (!data?.data?.analysis) {
+  //       console.error('Unexpected response format:', data);
+  //       throw new Error('Received invalid response format from server');
+  //     }
+
+  //     console.log('Successfully received AI analysis');
+  //     setAnalysis(data.data.analysis);
+  //   } catch (err) {
+  //     console.error('Error in handleAnalyze:', err);
+  //     setAnalysisError(err.message || 'An unknown error occurred while processing your request.');
+  //   } finally {
+  //     setLoadingAnalysis(false);
+  //   }
+  // };
+  const handleAnalyze = async () => {
+  setLoadingAnalysis(true);
+  setAnalysis('');
+  setAnalysisError('');
+  try {
+    console.log('Starting AI analysis for submission:', submissionId);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    // Add a timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      const response = await fetch(`${BASE_URL}/submissions/${submissionId}/analyze`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get AI analysis');
+      }
+      
+      if (!data?.data?.analysis) {
+        throw new Error('Received invalid response from server');
+      }
+      
+      setAnalysis(data.data.analysis);
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('The request timed out. Please try again.');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    console.error('Error in handleAnalyze:', err);
+    setAnalysisError(err.message || 'An error occurred while processing your request.');
+  } finally {
+    setLoadingAnalysis(false);
+  }
+};
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString()
   }
@@ -114,7 +225,6 @@ const SubmissionDetail = () => {
           glow: "shadow-cyan-500/50",
           border: "border-cyan-500/50",
           text: "JUDGING",
-          icon: "⚡",
         }
       default:
         return {
@@ -231,33 +341,40 @@ const SubmissionDetail = () => {
     )
   }
 
-  if (error || !submission) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-        <div className="fixed inset-0 bg-[linear-gradient(rgba(255,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,0,0,0.03)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
-
         <Navbar />
-        <div className="relative z-10 container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 text-red-400 mx-auto animate-pulse">
-                <svg fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z" />
-                  <path d="M12 8v4m0 4h.01" />
-                </svg>
-              </div>
-              <p className="text-red-400 text-xl font-mono">{" ERROR: " + (error || "Submission not found")}</p>
-              <Link to="/submissions">
-                <Button className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/25 bg-transparent">
-                  {/* <span className="mr-2">←</span> */}
-                  Back to Submissions
-                </Button>
-              </Link>
-            </div>
+        <div className="relative z-10 container mx-auto px-4 py-8 flex items-center justify-center min-h-[80vh]">
+          <div className="text-center space-y-4">
+            <p className="text-red-400 text-xl font-mono">{`> ERROR: ${error}`}</p>
+            <Link to="/submissions">
+              <Button className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all duration-300">
+                Back to Submissions
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
-    )
+    );
+  }
+
+  if (!submission) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        <Navbar />
+        <div className="relative z-10 container mx-auto px-4 py-8 flex items-center justify-center min-h-[80vh]">
+          <div className="text-center space-y-4">
+            <p className="text-yellow-400 text-xl font-mono">{'> SUBMISSION NOT FOUND'}</p>
+            <Link to="/submissions">
+              <Button className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all duration-300">
+                Back to Submissions
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -396,7 +513,7 @@ const SubmissionDetail = () => {
               <div className="bg-black/70 border border-green-500/20 rounded-lg overflow-hidden">
                 <div className="bg-gray-800/50 px-4 py-2 border-b border-gray-700/50 flex items-center justify-between">
                   <span className="text-green-400 font-mono text-sm">
-                    { submission.language.toUpperCase() + "_CODE"}
+                    {submission.language.toUpperCase() + "_CODE"}
                   </span>
                   <span className="text-gray-400 font-mono text-xs">{submission.code?.length || 0} characters</span>
                 </div>
@@ -419,7 +536,7 @@ const SubmissionDetail = () => {
 
                 <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700/30 text-center">
                   <p className="text-gray-400 font-mono text-sm">
-                    { submission.testCaseResults.filter((tc) => tc.passed).length +
+                    {submission.testCaseResults.filter((tc) => tc.passed).length +
                       "/" +
                       submission.testCaseResults.length +
                       " test cases passed"}
@@ -427,22 +544,50 @@ const SubmissionDetail = () => {
                 </div>
               </div>
             )}
+
+            {/* AI Analysis Section */}
+            <div className="mt-12">
+              <h3 className="text-xl font-bold text-purple-400 mb-4 font-mono flex items-center gap-2">
+                {"AI ANALYSIS"}
+              </h3>
+              <Button onClick={handleAnalyze} disabled={loadingAnalysis} className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-purple-500/20">
+                {loadingAnalysis ? (
+                  <>
+                    <BrainCircuit className="animate-spin h-5 w-5" />
+                    ANALYZING...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5" />
+                    GET AI ANALYSIS
+                  </>
+                )}
+              </Button>
+
+              {analysisError && <p className="text-red-400 mt-4 font-mono">{`> ERROR: ${analysisError}`}</p>}
+
+              {analysis && (
+                <div className="mt-6 p-6 bg-gray-900/50 border border-purple-500/30 rounded-lg prose prose-invert max-w-none prose-pre:bg-gray-800 prose-headings:text-purple-300 prose-strong:text-white">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{analysis}</ReactMarkdown>
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       </div>
 
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { 
-            transform: translateY(0px) rotate(0deg); 
-            opacity: 0.3; 
-          }
-          50% { 
-            transform: translateY(-20px) rotate(180deg); 
-            opacity: 0.8; 
-          }
-        }
-      `}</style>
+      <style jsx="true">{`
+  @keyframes float {
+    0%, 100% { 
+      transform: translateY(0px) rotate(0deg); 
+      opacity: 0.3; 
+    }
+    50% { 
+      transform: translateY(-20px) rotate(180deg); 
+      opacity: 0.8; 
+    }
+  }
+`}</style>
     </div>
   )
 }

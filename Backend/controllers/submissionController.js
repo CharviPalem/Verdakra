@@ -3,6 +3,7 @@ const Problem = require('../models/Problem');
 const Contest = require('../models/Contest');
 const mongoose = require('mongoose');
 const { judgeSubmission } = require('../code-execution/judge');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Get all submissions (admin only)
 const getAllSubmissions = async (req, res) => {
@@ -447,36 +448,278 @@ const getSubmissionsData = async (req, res) => {
 };
 
 // Retrieve last submitted code for a problem
-const retrieveLastSubmittedCode = async (req, res) => {
+
+// Analyze submission with AI
+// const analyzeSubmission = async (req, res) => {
+//   try {
+//     console.log('Starting AI analysis for submission:', req.params.id);
+    
+//     const submissionId = req.params.id;
+//     if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+//       console.error('Invalid submission ID format:', submissionId);
+//       return res.status(400).json({ success: false, message: 'Invalid submission ID format' });
+//     }
+
+//     const submission = await Submission.findById(submissionId)
+//       .populate("user", "username")
+//       .populate("problem");
+
+//     if (!submission) {
+//       console.error('Submission not found:', submissionId);
+//       return res.status(404).json({ success: false, message: 'Submission not found' });
+//     }
+
+//     if (!submission.problem) {
+//       console.error('Problem not found for submission:', submissionId);
+//       return res.status(404).json({ success: false, message: 'Problem not found for this submission' });
+//     }
+
+//     const apiKey = process.env.GEMINI_API_KEY;
+//     if (!apiKey) {
+//       console.error('GEMINI_API_KEY is not set');
+//       return res.status(500).json({ 
+//         success: false, 
+//         message: 'AI service is not configured. Missing API key.' 
+//       });
+//     }
+
+//     try {
+//       console.log('Initializing GoogleGenerativeAI...');
+//       console.log('API Key starts with:', apiKey ? `${apiKey.substring(0, 5)}...` : 'undefined');
+      
+//       const genAI = new GoogleGenerativeAI(apiKey.trim());
+//       console.log('GoogleGenerativeAI initialized successfully');
+      
+//       console.log('Getting model...');
+//       // Use the correct model name and API version
+//       const model = genAI.getGenerativeModel({ 
+//         model: 'gemini-2.0-flash',
+//         apiVersion: 'v1beta'
+//       });
+//       console.log('Model loaded successfully');
+
+//       console.log('Generating AI prompt...');
+//       const prompt = [
+//         `Role: You are an expert programming judge and mentor. Your task is to analyze a user's code submission for a competitive programming problem.`,
+//         `Problem Title: ${submission.problem?.title || 'N/A'}`,
+//         `Problem Description: ${submission.problem?.description || 'N/A'}`,
+//         `Problem Constraints: ${submission.problem?.constraints || 'N/A'}`,
+//         `User's Code (Language: ${submission.language || 'N/A'}):\n${submission.code || 'No code provided'}`,
+//         `Please analyze this code and provide feedback on:
+//         1. Time complexity
+//         2. Space complexity
+//         3. Potential optimizations
+//         4. Alternative approaches
+        
+//         Format your response in clear, well-structured markdown.`
+//       ].filter(Boolean).join("\n\n");
+
+//       console.log('Sending request to Gemini API...');
+//       console.log('Prompt length:', prompt.length);
+      
+//       try {
+//         console.log('Calling model.generateContent...');
+//         // Use the correct API format for the Gemini 2.0 Flash model
+//         const result = await model.generateContent({
+//           contents: [{
+//             role: 'user',
+//             parts: [{
+//               text: prompt
+//             }]
+//           }]
+//         });
+//         console.log('generateContent completed, getting response...');
+        
+//         const response = await result.response;
+//         console.log('Response received. Response structure:', Object.keys(response));
+        
+//         // Log the full response for debugging
+//         console.log('Full response:', JSON.stringify(response, null, 2));
+        
+//         // Handle the response from Gemini 2.0 Flash
+//         let analysisText = '';
+        
+//         // The response should have candidates array with content
+//         if (response.candidates && response.candidates.length > 0) {
+//           const candidate = response.candidates[0];
+//           if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+//             analysisText = candidate.content.parts[0].text || '';
+//             console.log('Extracted analysis text from response');
+//           }
+//         }
+        
+//         if (!analysisText) {
+//           console.error('Could not extract text from the AI response. Response structure:', 
+//             JSON.stringify(response, null, 2));
+//           throw new Error('The AI response did not contain any analysis text.');
+//         }
+        
+//         console.log('Successfully extracted analysis text. Length:', analysisText?.length || 0);
+//         return analysisText;
+//       } catch (apiError) {
+//         console.error('Error in Gemini API call:', {
+//           name: apiError.name,
+//           message: apiError.message,
+//           stack: apiError.stack,
+//           response: apiError.response?.data || 'No response data'
+//         });
+//         throw new Error(`AI service error: ${apiError.message}`);
+//       }
+      
+//       console.log('AI Analysis successful');
+
+//       return res.status(200).json({
+//         success: true,
+//         data: { analysis: analysisText }
+//       });
+//     } catch (aiError) {
+//       console.error('Error in AI analysis:', aiError);
+//       return res.status(500).json({
+//         success: false,
+//         message: 'Error processing AI analysis',
+//         error: aiError.message
+//       });
+//     }
+//   } catch (error) {
+//     console.error('Error in analyzeSubmission:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'An error occurred while analyzing the submission.',
+//       error: error.message,
+//     });
+//   }
+// };
+const analyzeSubmission = async (req, res) => {
+  console.log('Analyze submission endpoint hit');
   try {
-    const userId = req.user.id;
-    const problemId = req.params.problemId;
+    console.log('Submission ID:', req.params.id);
+    const submissionId = req.params.id;
     
-    // Find the most recent submission for this problem by the user
-    const submission = await Submission.findOne({
-      user: userId,
-      problem: problemId
-    })
-    .sort('-createdAt')
-    .select('code language createdAt');
-    
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'No previous submissions found for this problem'
+    if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+      console.error('Invalid submission ID format');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid submission ID format' 
       });
     }
-    
-    res.status(200).json({
-      success: true,
-      data: submission
+
+    console.log('Fetching submission from database...');
+    const submission = await Submission.findById(submissionId)
+      .populate("user", "username")
+      .populate("problem");
+
+    if (!submission) {
+      console.error('Submission not found');
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Submission not found' 
+      });
+    }
+
+    console.log('Checking for problem...');
+    if (!submission.problem) {
+      console.error('Problem not found for submission');
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Problem not found for this submission' 
+      });
+    }
+
+    console.log('Getting API key...');
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY is not set');
+      return res.status(500).json({ 
+        success: false, 
+        message: 'AI service is not configured. Missing API key.' 
+      });
+    }
+
+    console.log('Initializing GoogleGenerativeAI...');
+    const genAI = new GoogleGenerativeAI(apiKey.trim());
+    console.log('Getting model...');
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash',
+      apiVersion: 'v1beta'
     });
+    console.log('Model loaded successfully');
+
+    console.log('Generating prompt...');
+    const prompt = [
+      `Role: You are an expert programming judge and mentor. Your task is to analyze a user's code submission for a competitive programming problem.`,
+      `Problem Title: ${submission.problem?.title || 'N/A'}`,
+      `Problem Description: ${submission.problem?.description || 'N/A'}`,
+      `Problem Constraints: ${submission.problem?.constraints || 'N/A'}`,
+      `User's Code (Language: ${submission.language || 'N/A'}):\n${submission.code || 'No code provided'}`,
+      `Please analyze this code and provide feedback on:
+      1. Time complexity
+      2. Space complexity
+      3. Potential optimizations
+      4. Alternative approaches
+      
+      Format your response in clear, well-structured markdown.`
+    ].filter(Boolean).join("\n\n");
+
+    console.log('Sending request to Gemini API...');
+    console.log('Prompt length:', prompt.length);
+    
+    try {
+      console.log('Calling model.generateContent...');
+      const result = await model.generateContent({
+        contents: [{
+          role: 'user',
+          parts: [{
+            text: prompt
+          }]
+        }]
+      });
+      
+      console.log('Got response from Gemini API');
+      const response = await result.response;
+      console.log('Response received. Response keys:', Object.keys(response));
+      
+      // Log the full response for debugging
+      console.log('Full response:', JSON.stringify(response, null, 2));
+      
+      let analysisText = '';
+      
+      // Handle the response from Gemini 2.0 Flash
+      if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+          analysisText = candidate.content.parts[0].text || '';
+          console.log('Extracted analysis text from response');
+        }
+      }
+      
+      if (!analysisText) {
+        console.error('Could not extract text from the AI response. Response structure:', 
+          JSON.stringify(response, null, 2));
+        throw new Error('The AI response did not contain any analysis text.');
+      }
+      
+      console.log('Sending success response');
+      return res.status(200).json({
+        success: true,
+        data: { analysis: analysisText }
+      });
+      
+    } catch (apiError) {
+      console.error('Error in Gemini API call:', {
+        name: apiError.name,
+        message: apiError.message,
+        stack: apiError.stack,
+        response: apiError.response?.data || 'No response data'
+      });
+      throw apiError;
+    }
+
   } catch (error) {
-    console.error('Error retrieving last submitted code:', error);
-    res.status(500).json({
+    console.error('Error in analyzeSubmission:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to retrieve last submitted code',
-      error: error.message
+      message: 'Error processing AI analysis',
+      error: error.message,
     });
   }
 };
@@ -490,5 +733,5 @@ module.exports = {
   editSubmission,
   deleteSubmission,
   getSubmissionsData,
-  retrieveLastSubmittedCode
+  analyzeSubmission,
 };
