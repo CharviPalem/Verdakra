@@ -5,7 +5,12 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      maxWidth: {
+        '8xl': '90rem', // 1440px
+        '9xl': '100rem' // optional
+      },
+    },
   },
   plugins: [
     require('@tailwindcss/forms'),

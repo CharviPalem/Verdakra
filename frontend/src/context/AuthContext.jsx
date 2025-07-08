@@ -77,12 +77,26 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
   };
 
+  const resetPassword = async (email) => {
+    // Validate email format
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      throw new Error('Please enter a valid email address');
+    }
+    
+    // Make actual API call to backend
+    const response = await axios.post('/auth/reset-password', { email });
+    
+    // Return the actual API response
+    return response.data;
+  };
+
   const value = {
     currentUser,
     error,
     login,
     register,
     logout,
+    resetPassword,
     isAuthenticated: !!currentUser
   };
 

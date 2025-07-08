@@ -14,9 +14,18 @@ const cookieParser = require('cookie-parser');
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const problemRoutes = require('./routes/problem');
+const contestRoutes = require('./routes/contest');
+const submissionRoutes = require('./routes/submission');
+const runRoutes = require('./routes/run');
+const dashboardRoutes = require('./routes/dashboard');
 
 // Create Express app
 const app = express();
+// In your backend app.js or server.js
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
 
 // Set security HTTP headers
 if (process.env.HELMET_ENABLED === 'true') {
@@ -71,17 +80,27 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : [];
 
+// For development, add common local origins to the allowlist
+if (process.env.NODE_ENV === 'development') {
+  const devOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+  devOrigins.forEach(origin => {
+    if (!allowedOrigins.includes(origin)) {
+      allowedOrigins.push(origin);
+    }
+  });
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `CORS policy: ${origin} not allowed by server configuration.`;
-        return callback(new Error(msg), false);
+      // or if the origin is in our list of allowed origins.
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
       }
-      return callback(null, true);
+      
+      const msg = `CORS policy: The origin '${origin}' is not allowed to access this resource.`;
+      return callback(new Error(msg), false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -127,6 +146,11 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/problems', problemRoutes);
+app.use('/api/contests', contestRoutes);
+app.use('/api/submissions', submissionRoutes);
+app.use('/api/run', runRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 404 handler
 app.use((req, res) => {

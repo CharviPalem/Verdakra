@@ -1,51 +1,80 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/Card"
-import Badge from "../components/ui/Badge"
-import Button from "../components/ui/Button"
+import Problems from '../pages/Problems';
 import Footer from "../components/Footer"
 import Navbar from '../components/Navbar';
 
 const Dashboard = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    problemsSolved: 0,
-    submissions: 0,
-    rank: 0,
-    streak: 0
-  });
+  const [stats, setStats] = useState(null);
+  const [recentProblems, setRecentProblems] = useState([]);
+  const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    // Fetch user stats from the API
-    const fetchUserStats = async () => {
-      try {
-        // Replace with actual API call
-        // const response = await fetch('/api/user/stats');
-        // const data = await response.json();
-        // setStats(data);
+  const useIsVisible = () => {
+    const [isVisible, setIsVisible] = useState(false);
+    const ref = useRef(null);
 
-        // Simulated data for now
-        setTimeout(() => {
-          setStats({
-            problemsSolved: 42,
-            submissions: 87,
-            rank: 567,
-            streak: 5
-          });
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Error fetching user stats:', error);
+    useEffect(() => {
+      const observer = new IntersectionObserver(([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      });
+
+      if (ref.current) {
+        observer.observe(ref.current);
+      }
+
+      return () => {
+        if (ref.current) {
+          observer.unobserve(ref.current);
+        }
+      };
+    }, []);
+
+    return [ref, isVisible];
+  };
+
+  const [containerRef, isVisible] = useIsVisible();
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('Authentication token not found.');
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/dashboard/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to fetch dashboard data');
+        }
+
+        setStats(data.data.stats);
+        setRecentProblems(data.data.recentProblems);
+        setProgress(data.data.progress);
+
+      } catch (err) {
+        setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchUserStats();
-  }, []);
+    if (currentUser && isVisible) {
+      fetchDashboardData();
+    }
+  }, [currentUser, isVisible]);
 
   const handleLogout = async () => {
     try {
@@ -56,13 +85,7 @@ const Dashboard = () => {
     }
   };
 
-  // Sample problem data
-  const recentProblems = [
-    { id: 1, title: 'Two Sum', difficulty: 'Easy', status: 'Not Attempted', lastAttempted: '2 days ago' },
-    { id: 2, title: 'Add Two Numbers', difficulty: 'Medium', status: 'Not Attempted', lastAttempted: '1 week ago' },
-    { id: 3, title: 'Longest Substring Without Repeating Characters', difficulty: 'Medium', status: 'Not Attempted', lastAttempted: '3 days ago' },
-    { id: 4, title: 'Median of Two Sorted Arrays', difficulty: 'Hard', status: 'Not Attempted', lastAttempted: '-' },
-  ];
+
 
   // Sample contest data
   const upcomingContests = [
@@ -73,7 +96,7 @@ const Dashboard = () => {
   return (
     <>
 
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-black text-white" ref={containerRef}>
         <Navbar />
         <div className="relative min-h-screen overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-black z-0"></div>
@@ -143,14 +166,14 @@ const Dashboard = () => {
                   <div className="flex justify-between items-center">
                     <h2 className="text-sm font-medium text-gray-500">Problems Solved</h2>
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      +3 this week
+                      +{stats?.problemsSolvedThisWeek || 0} this week
                     </span>
                   </div>
                   <p className="mt-2 text-3xl font-bold text-gray-900">
                     {loading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      <span className="h-8 w-16 bg-gray-200 rounded animate-pulse inline-block"></span>
                     ) : (
-                      stats.problemsSolved
+                      stats?.problemsSolved
                     )}
                   </p>
                 </div>
@@ -159,14 +182,14 @@ const Dashboard = () => {
                   <div className="flex justify-between items-center">
                     <h2 className="text-sm font-medium text-gray-500">Submissions</h2>
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      +7 this week
+                      +{stats?.submissionsThisWeek || 0} this week
                     </span>
                   </div>
                   <p className="mt-2 text-3xl font-bold text-gray-900">
                     {loading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      <span className="h-8 w-16 bg-gray-200 rounded animate-pulse inline-block"></span>
                     ) : (
-                      stats.submissions
+                      stats?.submissions
                     )}
                   </p>
                 </div>
@@ -177,9 +200,9 @@ const Dashboard = () => {
                   </div>
                   <p className="mt-2 text-3xl font-bold text-gray-900">
                     {loading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      <span className="h-8 w-16 bg-gray-200 rounded animate-pulse inline-block"></span>
                     ) : (
-                      `#${stats.rank}`
+                      `#${stats?.rank}`
                     )}
                   </p>
                 </div>
@@ -193,9 +216,9 @@ const Dashboard = () => {
                   </div>
                   <p className="mt-2 text-3xl font-bold text-gray-900">
                     {loading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      <span className="h-8 w-16 bg-gray-200 rounded animate-pulse inline-block"></span>
                     ) : (
-                      `${stats.streak} days`
+                      `${stats?.streak} days`
                     )}
                   </p>
                 </div>
@@ -250,26 +273,47 @@ const Dashboard = () => {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {recentProblems.map((problem) => (
-                                <tr key={problem.id} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-indigo-600 hover:underline cursor-pointer">{problem.title}</div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                                      {problem.difficulty}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`text-sm ${problem.status === 'Solved' ? 'text-green-600' : problem.status === 'Attempted' ? 'text-yellow-600' : 'text-gray-500'}`}>
-                                      {problem.status}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {problem.lastAttempted}
+                              {recentProblems && recentProblems.length > 0 ? (
+                                recentProblems.map((problem) => (
+                                  <tr key={problem.id || Math.random()} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div className="text-sm font-medium text-indigo-600 hover:underline cursor-pointer" onClick={() => problem.slug ? navigate(`/problems/${problem.slug}`) : undefined}>
+                                        {problem.title || 'Unknown Problem'}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      {problem.difficulty ? (
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                          {problem.difficulty}
+                                        </span>
+                                      ) : (
+                                        <span>-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <span className={`text-sm ${problem.status === 'Solved' ? 'text-green-600' : 'text-yellow-600'}`}>
+                                        {problem.status || '-'}
+                                      </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      {problem.lastAttempted ? new Date(problem.lastAttempted).toLocaleDateString() : '-'}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan="4" className="text-center py-10">
+                                    <h3 className="text-lg font-medium text-gray-900">No Recent Activity</h3>
+                                    <p className="mt-1 text-sm text-gray-500">Start solving problems to see your progress here.</p>
+                                    <button 
+                                      onClick={() => setActiveTab('problems')}
+                                      className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                                    >
+                                      View Problems
+                                    </button>
                                   </td>
                                 </tr>
-                              ))}
+                              )}
                             </tbody>
                           </table>
                         </div>
@@ -319,32 +363,40 @@ const Dashboard = () => {
                       <div className="bg-white shadow rounded-lg p-6 mt-6">
                         <h2 className="text-lg font-medium text-gray-900 mb-4">Your Progress</h2>
                         <div>
-                          <div className="mb-2 flex justify-between items-center">
-                            <span className="text-xs font-medium text-gray-700">Easy</span>
-                            <span className="text-xs text-gray-500">25/100</span>
+                          {progress && (
+                          <div>
+                            <div className="mb-2 flex justify-between items-center">
+                              <span className="text-xs font-medium text-gray-700">Easy</span>
+                              <span className="text-xs text-gray-500">{progress.easy.solved}/{progress.easy.total}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${(progress.easy.solved / progress.easy.total) * 100}%` }}></div>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-600 h-2 rounded-full" style={{ width: '25%' }}></div>
-                          </div>
+                        )}
                         </div>
+                        {progress && (
                         <div className="mt-4">
                           <div className="mb-2 flex justify-between items-center">
                             <span className="text-xs font-medium text-gray-700">Medium</span>
-                            <span className="text-xs text-gray-500">15/100</span>
+                            <span className="text-xs text-gray-500">{progress.medium.solved}/{progress.medium.total}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-yellow-600 h-2 rounded-full" style={{ width: '15%' }}></div>
+                            <div className="bg-yellow-600 h-2 rounded-full" style={{ width: `${(progress.medium.solved / progress.medium.total) * 100}%` }}></div>
                           </div>
                         </div>
+                        )}
+                        {progress && (
                         <div className="mt-4">
                           <div className="mb-2 flex justify-between items-center">
                             <span className="text-xs font-medium text-gray-700">Hard</span>
-                            <span className="text-xs text-gray-500">2/100</span>
+                            <span className="text-xs text-gray-500">{progress.hard.solved}/{progress.hard.total}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-red-600 h-2 rounded-full" style={{ width: '2%' }}></div>
+                            <div className="bg-red-600 h-2 rounded-full" style={{ width: `${(progress.hard.solved / progress.hard.total) * 100}%` }}></div>
                           </div>
                         </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -352,9 +404,8 @@ const Dashboard = () => {
               )}
 
               {activeTab === 'problems' && (
-                <div className="bg-white shadow rounded-lg p-6">
-                  <h2 className="text-lg font-medium text-gray-900 mb-6">All Problems</h2>
-                  <p className="text-gray-700">Problem list component will be implemented here</p>
+                <div className="shadow rounded-lg p-6">
+                  <Problems isEmbedded={true} />
                 </div>
               )}
 
