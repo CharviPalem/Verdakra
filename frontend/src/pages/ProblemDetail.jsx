@@ -579,6 +579,9 @@ const ProblemDetail = () => {
                   {/* Test Results */}
                   {results.length > 0 && (
                     <div className="space-y-4">
+                      <div className="bg-yellow-900/40 border-l-4 border-yellow-400 p-3 rounded text-yellow-200 text-sm font-mono">
+                        Only public test cases are shown here. Hidden test cases will be revealed after submission.
+                      </div>
                       <FormLabel className="text-sm font-mono text-pink-400">{'> TEST_RESULTS:'}</FormLabel>
 
                       {/* Test Case Tabs */}

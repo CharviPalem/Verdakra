@@ -55,8 +55,9 @@ exports.runCode = async (req, res) => {
     }
 
     const results = [];
-    const allTestCases = [...problem.sampleTestCases, ...problem.testCases];
-    for (const testCase of allTestCases) {
+    // Only use first 2 sample test cases for run
+    const publicTestCases = problem.sampleTestCases.slice(0, 2);
+    for (const testCase of publicTestCases) {
       try {
         let output;
         let tle = false;

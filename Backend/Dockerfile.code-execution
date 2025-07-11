@@ -10,13 +10,16 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy package.json and package-lock.json if present
-COPY ../package*.json ./
+COPY package*.json ./
 
 # Install only prod dependencies
 RUN npm install --omit=dev
 
 # Copy code-execution source files
-COPY . .
+COPY code-execution/ ./code-execution/
+
+# Set working directory to code-execution
+WORKDIR /app/code-execution
 
 # Set environment variables (optional)
 ENV NODE_ENV=production

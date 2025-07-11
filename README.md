@@ -1,38 +1,71 @@
-# Online Judge Platform
 
-A full-stack online judge platform with user authentication and problem-solving capabilities.
+# Verdakra – Online Judge Platform
+
+**Verdakra** is a full-stack Online Judge (OJ) system that allows users to solve programming problems, run and submit code, and track their progress. The platform is designed with a developer-friendly interface, secure backend, and efficient code execution and evaluation pipeline.
 
 ## Features
 
-- User authentication (Sign up, Sign in, Logout)
-- Responsive dashboard
-- User profile and stats
-- Problem submission and evaluation (to be implemented)
-- Leaderboard (to be implemented)
+- User Authentication: Register and log in with secure JWT-based sessions.
+- Problem Solving Interface: Browse problems with descriptions, constraints, and test cases.
+- Code Execution: Run code against public test cases before submission.
+- Automated Judging: Submissions are evaluated automatically against hidden test cases.
+- Submission History: Track past submissions, verdicts, and timestamps.
+- Leaderboard: Displays top performers based on submission accuracy and speed.
+- Monaco Editor: Integrated code editor with syntax highlighting and multi-language support.
+- Responsive UI: Built for both desktop and mobile devices.
 
 ## Tech Stack
 
 ### Backend
-- Node.js
-- Express.js
-- MongoDB (with Mongoose)
+
+- Node.js, Express.js
+- MongoDB with Mongoose
 - JWT for authentication
 - Bcrypt for password hashing
+- Security: Helmet, XSS protection, CORS handling, rate limiting
+- Logging: Custom debug-level logging
 
 ### Frontend
-- React.js
-- React Router for navigation
+
+- React.js, Vite
 - Tailwind CSS for styling
-- Axios for API requests
-- React Context API for state management
+- Axios for API communication
+- React Router for client-side routing
+- Monaco Editor for code input
 
-## Prerequisites
+## Project Structure
 
-- Node.js (v14 or higher)
+```
+Verdakra/
+│
+├── Backend/
+│   ├── controllers/       # Business logic
+│   ├── models/            # Mongoose schemas
+│   ├── routes/            # API route definitions
+│   ├── middleware/        # Auth, error handling, security
+│   ├── code-execution/    # Code execution and result evaluation logic
+│   ├── utils/             # Helper utilities
+│   ├── server.js          # Entry point
+│   └── .env               # Environment config
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/    # Reusable UI elements
+│   │   ├── pages/         # Pages like Dashboard, ProblemSet, Submissions
+│   │   └── context/       # React context providers
+│   ├── public/            # Static files
+│   └── .env               # Vite config
+│
+└── README.md
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or later)
+- MongoDB (local or hosted)
 - npm or yarn
-- MongoDB (local or Atlas)
-
-## Installation
 
 ### Backend Setup
 
@@ -46,17 +79,49 @@ A full-stack online judge platform with user authentication and problem-solving 
    npm install
    ```
 
-3. Create a `.env` file in the Backend directory with the following variables:
+3. Create a `.env` file in the `Backend/` folder:
+
    ```
+   # Server
    PORT=5000
-   MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret_key
    NODE_ENV=development
+
+   # MongoDB
+   MONGODB_URI=mongodb://localhost:27017/verdakra
+
+   # Auth
+   JWT_SECRET=your_jwt_secret
+   JWT_EXPIRES_IN=30d
+   JWT_COOKIE_EXPIRES=30
+
+   # CORS
+   ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+   # Optional: Gemini AI Key
+   GEMINI_API_KEY=your_api_key
+
+   # Rate Limiting
+   RATE_LIMIT_WINDOW_MS=15*60*1000
+   RATE_LIMIT_MAX=100
+
+   # Logging
+   LOG_LEVEL=debug
+
+   # Security Headers
+   HELMET_ENABLED=true
+   XSS_ENABLED=true
+   NOSNIFF_ENABLED=true
+   HIDE_POWERED_BY=true
+
+   # Debug Mode
+   DEBUG=app:*,error:*
    ```
 
-4. Start the backend server:
+4. Start the server:
    ```bash
    npm start
+        or
+   npm run dev
    ```
 
 ### Frontend Setup
@@ -71,57 +136,36 @@ A full-stack online judge platform with user authentication and problem-solving 
    npm install
    ```
 
-3. Start the development server:
+3. Create a `.env` file in the `frontend/` folder:
+
+   ```
+   VITE_API_URL=http://localhost:5000/api
+   ```
+
+4. Start the development server:
    ```bash
    npm run dev
    ```
 
-4. Open [http://localhost:5173](http://localhost:5173) to view it in your browser.
+## Using the Platform
 
-## Project Structure
-
-```
-Verdakra/
-├── Backend/
-│   ├── config/           # Configuration files
-│   ├── controllers/      # Route controllers
-│   ├── middleware/       # Custom middleware
-│   ├── models/           # Database models
-│   ├── routes/           # API routes
-│   ├── .env              # Environment variables
-│   └── server.js         # Main server file
-├── frontend/
-│   ├── public/           # Static files
-│   └── src/
-│       ├── components/   # Reusable components
-│       ├── context/      # React context providers
-│       ├── pages/        # Page components
-│       ├── App.jsx       # Main App component
-│       └── main.jsx      # Entry point
-└── README.md
-```
-
-## Available Scripts
-
-In the project directory, you can run:
-
-### Backend
-- `npm start` - Start the backend server
-- `npm run dev` - Start the backend server in development mode with nodemon
-
-### Frontend
-- `npm run dev` - Start the development server
-- `npm run build` - Build the app for production
-- `npm run preview` - Preview the production build
+- Open http://localhost:5173
+- Register or log in
+- Navigate to problem sets
+- Solve and submit problems
+- Track progress in dashboard and submissions tab
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Interested in contributing? You're welcome to submit pull requests or open issues to discuss features, bug fixes, or improvements.
 
-## License
+## Notes
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- This project is under active development.
+- Currently not licensed – proprietary unless explicitly open-sourced.
+
+## Acknowledgements
+
+- Inspired by platforms like LeetCode, Codeforces, and HackerRank
+- Code editor powered by Monaco Editor
+- Built using open-source tools and frameworks

@@ -1,6 +1,6 @@
 // Default code stubs/templates for each language
 const defaultStubs = {
-  cpp: `#include <iostream>
+  cpp: `#include <bits/stdc++.h>
 using namespace std;
 
 int main() {
