@@ -12,13 +12,24 @@ const executeJava = (code, input, timeoutMs = 10000) => {
     function safeResolve(val) { if (!settled) { settled = true; resolve(val); } }
     function safeReject(val) { if (!settled) { settled = true; reject(val); } }
     try {
-      const fileData = await generateFile('java', code);
-      filePath = fileData.filePath;
+      // Generate file with fixed name Main.java
+      const uniqueName = 'Main';
+      const fileName = `${uniqueName}.java`;
+      const filePath = path.join(__dirname, 'codes', fileName);
+      
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(path.dirname(filePath))) {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      }
+      
+      // Write code to file
+      fs.writeFileSync(filePath, code);
+      
       dirPath = path.dirname(filePath);
       classFilePath = path.join(dirPath, 'Main.class');
       console.log(`[JavaCompiler] Generated code file: ${filePath}`);
 
-      const inputData = await generateInputFile(fileData.uniqueName, input);
+      const inputData = await generateInputFile(uniqueName, input);
       inputPath = inputData.inputPath;
       console.log(`[JavaCompiler] Generated input file: ${inputPath}`);
 
@@ -48,14 +59,12 @@ const executeJava = (code, input, timeoutMs = 10000) => {
       const timeout = setTimeout(() => {
         console.log('[JavaCompiler] Execution timed out. Killing process.');
         childProcess.kill();
-        safeReject({ stderr: 'Time Limit Exceeded' });
-      }, timeoutMs); // Use per-problem timeout
+      }, timeoutMs);
 
       childProcess.on('exit', (code) => {
         clearTimeout(timeout);
         console.log(`[JavaCompiler] Process exited with code ${code}`);
       });
-
     } catch (e) {
       console.error('[JavaCompiler] Setup error:', e);
       // Cleanup any files that might have been created

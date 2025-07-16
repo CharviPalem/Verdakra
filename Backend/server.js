@@ -82,7 +82,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 // For development, add common local origins to the allowlist
 if (process.env.NODE_ENV === 'development') {
-  const devOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+  const devOrigins = ['http://localhost', 'http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://localhost:80'];
   devOrigins.forEach(origin => {
     if (!allowedOrigins.includes(origin)) {
       allowedOrigins.push(origin);
@@ -115,18 +115,27 @@ app.use((req, res, next) => {
 });
 
 // Database connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/onlinejudge';
+const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/verdakra';
+console.log('Attempting to connect to MongoDB:', MONGODB_URI.replace(/\/\/.*:.*@/, '//***:***@')); // Log connection string with hidden credentials
 
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  family: 4 // Use IPv4, skip trying IPv6
+}).then(() => {
+  console.log('MongoDB connected successfully');
+}).catch(err => {
+  console.error('MongoDB connection error:', err);
+  // Don't exit the process, let the server continue running even if DB connection fails initially
 });
 
 const db = mongoose.connection;
 
 db.on('error', (error) => {
   console.error('MongoDB connection error:', error);
-  process.exit(1); // Exit process with failure
+  // Don't exit the process on connection error
 });
 
 db.once('open', () => {

@@ -1,0 +1,36 @@
+# Use official Node.js LTS image
+FROM node:20-bullseye
+
+# Install compilers and utilities (g++, openjdk, python3, etc.)
+RUN apt-get update && \
+    apt-get install -y g++ openjdk-17-jdk python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json if present
+COPY package*.json ./
+
+# Install only prod dependencies
+RUN npm install --omit=dev
+
+# Copy code-execution source files
+COPY code-execution/ ./code-execution/
+COPY models/ ./models/
+# Copy all backend files
+#COPY . .
+
+# Set working directory to code-execution
+WORKDIR /app/code-execution
+
+# Set environment variables (optional)
+ENV NODE_ENV=production
+
+# Expose port 5000 for the code-execution service
+EXPOSE 5000
+
+# Default command (can be overridden)
+CMD ["node", "server.js"]
+
+
