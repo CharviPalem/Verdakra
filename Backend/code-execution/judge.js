@@ -1,8 +1,7 @@
 const Submission = require('../models/Submission');
 const Problem = require('../models/Problem');
-const { executePython } = require('./pythonCompiler');
-const { executeCpp } = require('./cppCompiler');
-const { executeJava } = require('./javaCompiler');
+const axios = require('axios');
+const { CODE_EXECUTION_API } = require('../config/codeExecution');
 
 const judgeSubmission = async (submissionId) => {
     try {
@@ -27,13 +26,15 @@ for (let i = 0; i < allTestCases.length; i++) {
         let timeoutMs = (problem && problem.timeLimit ? problem.timeLimit * 1000 : (language.toLowerCase() === 'java' ? 10000 : 5000));
         switch (language.toLowerCase()) {
             case 'python':
-                output = await executePython(code, testCase.input, timeoutMs);
-                break;
             case 'cpp':
-                output = await executeCpp(code, testCase.input, timeoutMs);
-                break;
             case 'java':
-                output = await executeJava(code, testCase.input, timeoutMs);
+                const response = await axios.post(`${CODE_EXECUTION_API}/execute`, {
+                    code,
+                    language: language.toLowerCase(),
+                    input: testCase.input,
+                    timeout: timeoutMs
+                });
+                output = response.data.output;
                 break;
             default:
                 throw new Error(`Unsupported language: ${language}`);

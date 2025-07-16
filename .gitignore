@@ -44,3 +44,5 @@ docker-compose.override.yml
 # Sensitive files that might contain credentials
 *.pem
 *.key
+/keys
+

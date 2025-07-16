@@ -27,8 +27,8 @@ WORKDIR /app/code-execution
 # Set environment variables (optional)
 ENV NODE_ENV=production
 
-# Expose port 5000 for the code-execution service
-EXPOSE 5000
+# Expose port 8000 for the code-execution service
+EXPOSE 8000
 
 # Default command (can be overridden)
 CMD ["node", "server.js"]

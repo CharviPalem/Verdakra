@@ -1,0 +1,22 @@
+services:
+  code-execution:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.code-execution
+    container_name: verdakra-code-execution
+    ports:
+      - "8001:8000"
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - MONGODB_URI=mongodb+srv://admin:root321@verdaka.0ned3hz.mongodb.net/verdakra
+    volumes:
+      - ./Backend/code-execution:/app/code-execution
+      - ./Backend/models:/app/models
+      - /app/node_modules
+    networks:
+      - verdakra-network
+
+networks:
+  verdakra-network:
+    driver: bridge
