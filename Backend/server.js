@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -10,6 +9,8 @@ const hpp = require('hpp');
 const mongoSanitize = require('express-mongo-sanitize');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const { corsOptions, handlePreflight, securityHeaders } = require('./middleware/corsMiddleware');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -75,38 +76,15 @@ app.use(
 // Serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : [];
+// Enable CORS
+app.use(cors(corsOptions));
 
-// For development, add common local origins to the allowlist
-if (process.env.NODE_ENV === 'development') {
-  const devOrigins = ['http://localhost', 'http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://localhost:80'];
-  devOrigins.forEach(origin => {
-    if (!allowedOrigins.includes(origin)) {
-      allowedOrigins.push(origin);
-    }
-  });
-}
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      // or if the origin is in our list of allowed origins.
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        return callback(null, true);
-      }
-      
-      const msg = `CORS policy: The origin '${origin}' is not allowed to access this resource.`;
-      return callback(new Error(msg), false);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  })
-);
+// Add security headers and handle preflight
+app.use(securityHeaders);
+app.use(handlePreflight);
 
 // Add request time to the request object
 app.use((req, res, next) => {
